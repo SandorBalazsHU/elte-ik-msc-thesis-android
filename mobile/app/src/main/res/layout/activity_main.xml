@@ -1,22 +1,113 @@
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp">
-
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="224dp"
-        android:layout_height="224dp"
-        android:scaleType="centerCrop"
-        android:layout_marginBottom="16dp"/>
-
-    <TextView
-        android:id="@+id/textResult"
+    android:layout_height="match_parent">
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Prediction appears here"
-        android:textSize="16sp"/>
-</LinearLayout>
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="16dp">
+
+        <!-- Fejléc -->
+        <TextView
+            android:id="@+id/titleLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ResNet18Hybrid mobile tester"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="2dp"/>
+
+        <TextView
+            android:id="@+id/authorLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Created by: Sándor Balázs"
+            android:textSize="14sp"
+            android:textStyle="italic"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- Modell választó -->
+        <Spinner
+            android:id="@+id/modelSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"/>
+
+        <!-- Forrás választó -->
+        <Spinner
+            android:id="@+id/sourceSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"/>
+
+        <!-- Kamera gomb -->
+        <Button
+            android:id="@+id/cameraButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open Camera"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Galéria gomb -->
+        <Button
+            android:id="@+id/galleryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open Gallery"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Példaképek lista -->
+        <Spinner
+            android:id="@+id/exampleSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Képmegjelenítés -->
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="224dp"
+            android:layout_height="224dp"
+            android:scaleType="centerCrop"
+            android:background="#EEE"
+            android:layout_marginBottom="14dp"/>
+
+        <!-- RUN és RESET gombok egy sorban -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/runButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RUN"
+                android:layout_marginRight="18dp"/>
+
+            <Button
+                android:id="@+id/resetButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RESET"/>
+        </LinearLayout>
+
+        <!-- Predikció eredmény -->
+        <TextView
+            android:id="@+id/resultText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="16sp"
+            android:paddingTop="12dp"
+            android:paddingBottom="16dp"/>
+
+    </LinearLayout>
+</ScrollView>

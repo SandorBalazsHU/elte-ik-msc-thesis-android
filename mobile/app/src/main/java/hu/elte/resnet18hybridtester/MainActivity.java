@@ -17,129 +17,128 @@ import org.pytorch.torchvision.TensorImageUtils;
 import java.io.*;
 import java.util.*;
 
+import android.os.Bundle;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.Spinner;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+
 public class MainActivity extends AppCompatActivity {
 
-    private Module model;
-    private List<String> classNames;
+    private Spinner modelSpinner, sourceSpinner, exampleSpinner;
+    private Button cameraButton, galleryButton;
+    private ImageView imageView;
+    private TextView resultText;
+
+    // A három modell
+    private final String[] modelNames = {"Baseline", "Deep", "Hybrid"};
+
+    // Példaképek az assets-ben (állítsd be a tényleges nevet, ha más)
+    private String[] exampleImages = {"test01.jpg", "test02.jpg", "test03.jpg", "test04.jpg", "test05.jpg",
+            "test06.jpg", "test07.jpg", "test08.jpg", "test09.jpg", "test10.jpg"};
+    private Bitmap currentBitmap = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ImageView imageView = findViewById(R.id.imageView);
-        TextView textResult = findViewById(R.id.textResult);
+        modelSpinner = findViewById(R.id.modelSpinner);
+        sourceSpinner = findViewById(R.id.sourceSpinner);
+        exampleSpinner = findViewById(R.id.exampleSpinner);
+        cameraButton = findViewById(R.id.cameraButton);
+        galleryButton = findViewById(R.id.galleryButton);
+        imageView = findViewById(R.id.imageView);
+        resultText = findViewById(R.id.resultText);
 
+        // Modell spinner
+        ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, modelNames);
+        modelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        modelSpinner.setAdapter(modelAdapter);
+
+        // Source spinner
+        ArrayAdapter<String> sourceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item,
+                new String[]{"Camera", "Gallery", "Examples"});
+        sourceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sourceSpinner.setAdapter(sourceAdapter);
+
+        // Példaképek spinner
+        ArrayAdapter<String> exampleAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, exampleImages);
+        exampleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        exampleSpinner.setAdapter(exampleAdapter);
+
+        // Source választó logika
+        sourceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                cameraButton.setVisibility(View.GONE);
+                galleryButton.setVisibility(View.GONE);
+                exampleSpinner.setVisibility(View.GONE);
+
+                if (position == 0) { // Camera
+                    cameraButton.setVisibility(View.VISIBLE);
+                    imageView.setImageBitmap(null);
+                    resultText.setText("");
+                } else if (position == 1) { // Gallery
+                    galleryButton.setVisibility(View.VISIBLE);
+                    imageView.setImageBitmap(null);
+                    resultText.setText("");
+                } else if (position == 2) { // Examples
+                    exampleSpinner.setVisibility(View.VISIBLE);
+                    imageView.setImageBitmap(null);
+                    resultText.setText("");
+                }
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+
+        // Példaképek választása esetén
+        exampleSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                loadExampleImage(position);
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+
+        // Egyenlőre csak dummy gombok (nem csinálnak semmit)
+        cameraButton.setOnClickListener(v -> {
+            resultText.setText("Camera: ide jön majd a fotózás logika!");
+            imageView.setImageBitmap(null);
+        });
+
+        galleryButton.setOnClickListener(v -> {
+            resultText.setText("Gallery: ide jön majd a galéria logika!");
+            imageView.setImageBitmap(null);
+        });
+    }
+
+    private void loadExampleImage(int position) {
+        if (exampleImages == null || exampleImages.length == 0) return;
+        String imageName = exampleImages[position];
         try {
-            // 1. Modell betöltése
-            model = Module.load(assetFilePath("resnet18_baseline_scripted.pt"));
-
-            // 2. Osztálynevek betöltése
-            classNames = loadClassNames("class_labels.txt");
-
-            // 3. Mintakép betöltése az assets-ből
-            Bitmap bitmap = getBitmapFromAsset("test01.jpg");
-            imageView.setImageBitmap(bitmap);
-
-            // 4. Predikció futtatása
-            float[] prediction = predict(bitmap);
-
-            // 5. Top5 eredmény kiírása
-            String resultText = getPredictionResult(prediction);
-            textResult.setText(resultText);
-
-        } catch (Exception e) {
-            textResult.setText("Hiba: " + e.getMessage());
-            e.printStackTrace();
+            AssetManager assetManager = getAssets();
+            InputStream istr = assetManager.open(imageName);
+            Bitmap bitmap = BitmapFactory.decodeStream(istr);
+            // 224x224-re átméretezve
+            Bitmap scaled = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
+            imageView.setImageBitmap(scaled);
+            currentBitmap = scaled;
+            resultText.setText("Loaded: " + imageName);
+        } catch (IOException e) {
+            resultText.setText("Hiba: " + e.getMessage());
+            imageView.setImageBitmap(null);
+            currentBitmap = null;
         }
-    }
-
-    // Assetből fájl elérési útvonalat ad vissza (PyTorch Mobile ezt kéri)
-    private String assetFilePath(String assetName) throws IOException {
-        File file = new File(getFilesDir(), assetName);
-        if (file.exists() && file.length() > 0) {
-            return file.getAbsolutePath();
-        }
-        AssetManager assetManager = getAssets();
-        try (InputStream is = assetManager.open(assetName);
-             FileOutputStream os = new FileOutputStream(file)) {
-            byte[] buffer = new byte[4 * 1024];
-            int read;
-            while ((read = is.read(buffer)) != -1) {
-                os.write(buffer, 0, read);
-            }
-            os.flush();
-        }
-        return file.getAbsolutePath();
-    }
-
-    // Osztálylista betöltése (soronként egy class)
-    private List<String> loadClassNames(String assetName) throws IOException {
-        List<String> names = new ArrayList<>();
-        AssetManager assetManager = getAssets();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(assetManager.open(assetName)))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                names.add(line.trim());
-            }
-        }
-        return names;
-    }
-
-    // Kép betöltése assets-ből
-    private Bitmap getBitmapFromAsset(String filePath) throws IOException {
-        AssetManager assetManager = getAssets();
-        try (InputStream istr = assetManager.open(filePath)) {
-            return BitmapFactory.decodeStream(istr);
-        }
-    }
-
-    // Predikció végrehajtása
-    private float[] predict(Bitmap bitmap) {
-        // Ugyanazzal a normalizálással, mint tanításkor!
-        final float[] MEAN = {0.485f, 0.456f, 0.406f};
-        final float[] STD = {0.229f, 0.224f, 0.225f};
-
-        // Ha a bemeneti kép mérete eltér 224x224-től, átméretezzük
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
-
-        Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, MEAN, STD);
-
-        IValue inputs = IValue.from(inputTensor);
-        Tensor outputTensor = model.forward(inputs).toTensor();
-
-        return outputTensor.getDataAsFloatArray();
-    }
-
-    // Top5 eredmény formázása
-    private String getPredictionResult(float[] scores) {
-        int n = scores.length;
-
-        // Softmax kiszámítása százalékokhoz
-        double[] expScores = new double[n];
-        double sum = 0.0;
-        for (int i = 0; i < n; i++) {
-            expScores[i] = Math.exp(scores[i]);
-            sum += expScores[i];
-        }
-
-        // Párosítsuk index-szel
-        List<Integer> idxList = new ArrayList<>();
-        for (int i = 0; i < n; i++) idxList.add(i);
-
-        // Top5 index keresése
-        idxList.sort((a, b) -> Float.compare(scores[b], scores[a]));
-
-        // Top1 predikció
-        int top1Idx = idxList.get(0);
-        StringBuilder sb = new StringBuilder();
-        sb.append("Predikált osztály: ").append(classNames.get(top1Idx)).append("\n\n");
-        sb.append("Top 5 tipp:\n");
-        for (int i = 0; i < 5; i++) {
-            int idx = idxList.get(i);
-            double prob = expScores[idx] / sum * 100.0;
-            sb.append(String.format("%d. %s - %.1f%%\n", i+1, classNames.get(idx), prob));
-        }
-        return sb.toString();
     }
 }
