@@ -5,6 +5,7 @@ import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -84,7 +85,9 @@ public class MainActivity extends AppCompatActivity {
                     resultText.setText("");
                 } else if (position == 2) { // Examples
                     exampleSpinner.setVisibility(View.VISIBLE);
-                    imageView.setImageBitmap(null);
+                    int sel = exampleSpinner.getSelectedItemPosition();
+                    loadExampleImage(sel);
+                    imageView.setImageBitmap(currentBitmap);
                     resultText.setText("");
                 }
             }
@@ -115,6 +118,8 @@ public class MainActivity extends AppCompatActivity {
             imageView.setImageBitmap(null);
             Intent intent = new Intent(Intent.ACTION_PICK);
             intent.setType("image/*");
+            // Próbáljuk a Camera/DCIM mappát megnyitni, ha támogatja a galéria
+            intent.setData(MediaStore.Images.Media.INTERNAL_CONTENT_URI);
             startActivityForResult(intent, REQUEST_GALLERY_IMAGE);
         });
 
