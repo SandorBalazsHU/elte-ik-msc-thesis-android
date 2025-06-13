@@ -1,6 +1,6 @@
 package hu.elte.resnet18hybridtester;
 
-import android.content.res.AssetFileDescriptor;
+import android.content.Intent;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -8,27 +8,11 @@ import android.os.Bundle;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
-
-import org.pytorch.IValue;
-import org.pytorch.Module;
-import org.pytorch.Tensor;
-import org.pytorch.torchvision.TensorImageUtils;
-
-import java.io.*;
-import java.util.*;
-
-import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.Spinner;
-import android.widget.TextView;
-import androidx.appcompat.app.AppCompatActivity;
-import android.content.res.AssetManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,11 +26,13 @@ public class MainActivity extends AppCompatActivity {
 
     // A három modell
     private final String[] modelNames = {"Baseline", "Deep", "Hybrid"};
-
     // Példaképek az assets-ben (állítsd be a tényleges nevet, ha más)
     private String[] exampleImages = {"test01.jpg", "test02.jpg", "test03.jpg", "test04.jpg", "test05.jpg",
             "test06.jpg", "test07.jpg", "test08.jpg", "test09.jpg", "test10.jpg"};
     private Bitmap currentBitmap = null;
+
+    // Kamera request code
+    private static final int REQUEST_IMAGE_CAPTURE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,18 +97,42 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onNothingSelected(AdapterView<?> parent) { }
         });
 
-        // Egyenlőre csak dummy gombok (nem csinálnak semmit)
+        // KAMERA gomb logikája:
         cameraButton.setOnClickListener(v -> {
-            resultText.setText("Camera: ide jön majd a fotózás logika!");
+            resultText.setText(""); // töröld az előző üzenetet
             imageView.setImageBitmap(null);
+
+            Intent takePictureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            } else {
+                resultText.setText("Camera not available!");
+            }
         });
 
+        // Galéria gomb logika majd később jön!
         galleryButton.setOnClickListener(v -> {
             resultText.setText("Gallery: ide jön majd a galéria logika!");
             imageView.setImageBitmap(null);
         });
     }
 
+    // Kamera eredmény feldolgozása (Android 11-ig működik így!)
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            Bundle extras = data.getExtras();
+            Bitmap imageBitmap = (Bitmap) extras.get("data");
+            // Átméretezzük 224x224-re
+            Bitmap scaled = Bitmap.createScaledBitmap(imageBitmap, 224, 224, true);
+            imageView.setImageBitmap(scaled);
+            currentBitmap = scaled;
+            resultText.setText("Kép elkészült, készen áll a predikcióra!");
+        }
+    }
+
+    // Példakép betöltő függvény
     private void loadExampleImage(int position) {
         if (exampleImages == null || exampleImages.length == 0) return;
         String imageName = exampleImages[position];
