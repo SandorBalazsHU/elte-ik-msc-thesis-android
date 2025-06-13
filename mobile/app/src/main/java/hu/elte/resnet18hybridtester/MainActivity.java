@@ -24,15 +24,13 @@ public class MainActivity extends AppCompatActivity {
     private ImageView imageView;
     private TextView resultText;
 
-    // A három modell
     private final String[] modelNames = {"Baseline", "Deep", "Hybrid"};
-    // Példaképek az assets-ben (állítsd be a tényleges nevet, ha más)
     private String[] exampleImages = {"test01.jpg", "test02.jpg", "test03.jpg", "test04.jpg", "test05.jpg",
             "test06.jpg", "test07.jpg", "test08.jpg", "test09.jpg", "test10.jpg"};
     private Bitmap currentBitmap = null;
 
-    // Kamera request code
     private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int REQUEST_GALLERY_IMAGE = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,23 +45,19 @@ public class MainActivity extends AppCompatActivity {
         imageView = findViewById(R.id.imageView);
         resultText = findViewById(R.id.resultText);
 
-        // Modell spinner
         ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, modelNames);
         modelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         modelSpinner.setAdapter(modelAdapter);
 
-        // Source spinner
         ArrayAdapter<String> sourceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item,
                 new String[]{"Camera", "Gallery", "Examples"});
         sourceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         sourceSpinner.setAdapter(sourceAdapter);
 
-        // Példaképek spinner
         ArrayAdapter<String> exampleAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, exampleImages);
         exampleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         exampleSpinner.setAdapter(exampleAdapter);
 
-        // Source választó logika
         sourceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -88,7 +82,6 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onNothingSelected(AdapterView<?> parent) { }
         });
 
-        // Példaképek választása esetén
         exampleSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -97,11 +90,9 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onNothingSelected(AdapterView<?> parent) { }
         });
 
-        // KAMERA gomb logikája:
         cameraButton.setOnClickListener(v -> {
-            resultText.setText(""); // töröld az előző üzenetet
+            resultText.setText("");
             imageView.setImageBitmap(null);
-
             Intent takePictureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
             if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
@@ -110,29 +101,44 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Galéria gomb logika majd később jön!
         galleryButton.setOnClickListener(v -> {
-            resultText.setText("Gallery: ide jön majd a galéria logika!");
+            resultText.setText("");
             imageView.setImageBitmap(null);
+            Intent intent = new Intent(Intent.ACTION_PICK);
+            intent.setType("image/*");
+            startActivityForResult(intent, REQUEST_GALLERY_IMAGE);
         });
     }
 
-    // Kamera eredmény feldolgozása (Android 11-ig működik így!)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             Bundle extras = data.getExtras();
             Bitmap imageBitmap = (Bitmap) extras.get("data");
-            // Átméretezzük 224x224-re
             Bitmap scaled = Bitmap.createScaledBitmap(imageBitmap, 224, 224, true);
             imageView.setImageBitmap(scaled);
             currentBitmap = scaled;
             resultText.setText("Kép elkészült, készen áll a predikcióra!");
         }
+        else if (requestCode == REQUEST_GALLERY_IMAGE && resultCode == RESULT_OK && data != null) {
+            try {
+                InputStream inputStream = getContentResolver().openInputStream(data.getData());
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                Bitmap scaled = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
+                imageView.setImageBitmap(scaled);
+                currentBitmap = scaled;
+                resultText.setText("Galériaképet betöltöttük, készen áll a predikcióra!");
+                inputStream.close();
+            } catch (IOException e) {
+                resultText.setText("Galéria hiba: " + e.getMessage());
+                imageView.setImageBitmap(null);
+                currentBitmap = null;
+            }
+        }
     }
 
-    // Példakép betöltő függvény
     private void loadExampleImage(int position) {
         if (exampleImages == null || exampleImages.length == 0) return;
         String imageName = exampleImages[position];
@@ -140,7 +146,6 @@ public class MainActivity extends AppCompatActivity {
             AssetManager assetManager = getAssets();
             InputStream istr = assetManager.open(imageName);
             Bitmap bitmap = BitmapFactory.decodeStream(istr);
-            // 224x224-re átméretezve
             Bitmap scaled = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
             imageView.setImageBitmap(scaled);
             currentBitmap = scaled;
