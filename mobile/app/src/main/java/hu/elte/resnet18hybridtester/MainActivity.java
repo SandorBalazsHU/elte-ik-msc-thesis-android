@@ -32,8 +32,17 @@ public class MainActivity extends AppCompatActivity {
 
     private final String[] modelNames = {"Baseline", "Deep", "Hybrid"};
     private final String[] modelFiles = {"resnet18_baseline_scripted.pt", "resnet18_deep_scripted.pt", "resnet18_hybrid_scripted.pt"};
-    private String[] exampleImages = {"test01.jpg", "test02.jpg", "test03.jpg", "test04.jpg", "test05.jpg",
-            "test06.jpg", "test07.jpg", "test08.jpg", "test09.jpg", "test10.jpg"};
+    private String[] exampleImages = {
+            "test01.jpg", "test02.jpg", "test03.jpg", "test04.jpg", "test05.jpg",
+            "test06.jpg", "test07.jpg", "test08.jpg", "test09.jpg", "test10.jpg",
+            "test11.jpg", "test12.jpg", "test13.jpg", "test14.jpg", "test15.jpg",
+            "test16.jpg", "test17.jpg", "test18.jpg", "test19.jpg", "test20.jpg",
+            "test21.jpg", "test22.jpg", "test23.jpg", "test24.jpg", "test25.jpg",
+            "test26.jpg", "test27.jpg", "test28.jpg", "test29.jpg", "test30.jpg",
+            "test31.jpg", "test32.jpg", "test33.jpg", "test34.jpg", "test35.jpg",
+            "test36.jpg", "test37.jpg", "test38.jpg", "test39.jpg", "test40.jpg"
+    };
+
     private Bitmap currentBitmap = null;
     private List<String> classNames = null;
 
