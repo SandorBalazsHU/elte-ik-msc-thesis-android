@@ -14,20 +14,27 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 
-import java.io.IOException;
-import java.io.InputStream;
+import org.pytorch.IValue;
+import org.pytorch.Module;
+import org.pytorch.Tensor;
+import org.pytorch.torchvision.TensorImageUtils;
+
+import java.io.*;
+import java.util.*;
 
 public class MainActivity extends AppCompatActivity {
 
     private Spinner modelSpinner, sourceSpinner, exampleSpinner;
-    private Button cameraButton, galleryButton;
+    private Button cameraButton, galleryButton, runButton, resetButton;
     private ImageView imageView;
     private TextView resultText;
 
     private final String[] modelNames = {"Baseline", "Deep", "Hybrid"};
+    private final String[] modelFiles = {"resnet18_baseline_scripted.pt", "resnet18_deep_scripted.pt", "resnet18_hybrid_scripted.pt"};
     private String[] exampleImages = {"test01.jpg", "test02.jpg", "test03.jpg", "test04.jpg", "test05.jpg",
             "test06.jpg", "test07.jpg", "test08.jpg", "test09.jpg", "test10.jpg"};
     private Bitmap currentBitmap = null;
+    private List<String> classNames = null;
 
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_GALLERY_IMAGE = 2;
@@ -42,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
         exampleSpinner = findViewById(R.id.exampleSpinner);
         cameraButton = findViewById(R.id.cameraButton);
         galleryButton = findViewById(R.id.galleryButton);
+        runButton = findViewById(R.id.runButton);
+        resetButton = findViewById(R.id.resetButton);
         imageView = findViewById(R.id.imageView);
         resultText = findViewById(R.id.resultText);
 
@@ -108,6 +117,56 @@ public class MainActivity extends AppCompatActivity {
             intent.setType("image/*");
             startActivityForResult(intent, REQUEST_GALLERY_IMAGE);
         });
+
+        // RUN GOMB – predikció és időmérés
+        runButton.setOnClickListener(v -> {
+            if (currentBitmap == null) {
+                resultText.setText("Nincs kép kiválasztva!");
+                return;
+            }
+
+            resultText.setText("Modell betöltése, predikció fut...");
+            new Thread(() -> {
+                try {
+                    // 1. Modell kiválasztása
+                    int modelIdx = modelSpinner.getSelectedItemPosition();
+                    String modelFile = modelFiles[modelIdx];
+                    Module model = Module.load(assetFilePath(modelFile));
+
+                    // 2. Osztálynevek betöltése (csak egyszer)
+                    if (classNames == null) classNames = loadClassNames("class_labels.txt");
+
+                    // 3. Időmérés indítása
+                    long startTime = System.currentTimeMillis();
+
+                    // 4. Predikció
+                    float[] prediction = predict(model, currentBitmap);
+
+                    // 5. Időmérés vége
+                    long endTime = System.currentTimeMillis();
+                    long elapsedMs = endTime - startTime;
+
+                    // 6. Top5 eredmény szöveggé alakítása
+                    String predResult = getPredictionResult(prediction);
+                    String msg = predResult + "\nIdő: " + elapsedMs + " ms";
+
+                    // 7. Kiírás a UI-ra (főszálon)
+                    runOnUiThread(() -> resultText.setText(msg));
+                } catch (Exception e) {
+                    runOnUiThread(() -> resultText.setText("Hiba: " + e.getMessage()));
+                    e.printStackTrace();
+                }
+            }).start();
+        });
+
+        // RESET GOMB
+        resetButton.setOnClickListener(v -> {
+            currentBitmap = null;
+            imageView.setImageBitmap(null);
+            resultText.setText("");
+            sourceSpinner.setSelection(0);
+            modelSpinner.setSelection(0);
+        });
     }
 
     @Override
@@ -155,5 +214,78 @@ public class MainActivity extends AppCompatActivity {
             imageView.setImageBitmap(null);
             currentBitmap = null;
         }
+    }
+
+    // Assetből fájl elérési útvonalat ad vissza (PyTorch Mobile ezt kéri)
+    private String assetFilePath(String assetName) throws IOException {
+        File file = new File(getFilesDir(), assetName);
+        if (file.exists() && file.length() > 0) {
+            return file.getAbsolutePath();
+        }
+        AssetManager assetManager = getAssets();
+        try (InputStream is = assetManager.open(assetName);
+             FileOutputStream os = new FileOutputStream(file)) {
+            byte[] buffer = new byte[4 * 1024];
+            int read;
+            while ((read = is.read(buffer)) != -1) {
+                os.write(buffer, 0, read);
+            }
+            os.flush();
+        }
+        return file.getAbsolutePath();
+    }
+
+    // Osztálylista betöltése (soronként egy class)
+    private List<String> loadClassNames(String assetName) throws IOException {
+        List<String> names = new ArrayList<>();
+        AssetManager assetManager = getAssets();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(assetManager.open(assetName)))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                names.add(line.trim());
+            }
+        }
+        return names;
+    }
+
+    // Predikció végrehajtása
+    private float[] predict(Module model, Bitmap bitmap) {
+        final float[] MEAN = {0.485f, 0.456f, 0.406f};
+        final float[] STD = {0.229f, 0.224f, 0.225f};
+
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
+        Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, MEAN, STD);
+        IValue inputs = IValue.from(inputTensor);
+        Tensor outputTensor = model.forward(inputs).toTensor();
+
+        return outputTensor.getDataAsFloatArray();
+    }
+
+    // Top5 eredmény formázása
+    private String getPredictionResult(float[] scores) {
+        int n = scores.length;
+
+        // Softmax kiszámítása százalékokhoz
+        double[] expScores = new double[n];
+        double sum = 0.0;
+        for (int i = 0; i < n; i++) {
+            expScores[i] = Math.exp(scores[i]);
+            sum += expScores[i];
+        }
+
+        List<Integer> idxList = new ArrayList<>();
+        for (int i = 0; i < n; i++) idxList.add(i);
+        idxList.sort((a, b) -> Float.compare(scores[b], scores[a]));
+
+        int top1Idx = idxList.get(0);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Predikált osztály: ").append(classNames.get(top1Idx)).append("\n\n");
+        sb.append("Top 5 tipp:\n");
+        for (int i = 0; i < 5; i++) {
+            int idx = idxList.get(i);
+            double prob = expScores[idx] / sum * 100.0;
+            sb.append(String.format("%d. %s - %.1f%%\n", i + 1, classNames.get(idx), prob));
+        }
+        return sb.toString();
     }
 }
