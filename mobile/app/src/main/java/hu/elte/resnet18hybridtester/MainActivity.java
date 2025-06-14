@@ -30,8 +30,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageView imageView;
     private TextView resultText;
 
-    private final String[] modelNames = {"Baseline", "Deep", "Hybrid"};
-    private final String[] modelFiles = {"resnet18_baseline_scripted.pt", "resnet18_deep_scripted.pt", "resnet18_hybrid_scripted.pt"};
+    private final String[] modelNames = {"Baseline", "Deep", "Hybrid", "Hybrid v2"};
+    private final String[] modelFiles = {"resnet18_baseline_scripted.pt", "resnet18_deep_scripted.pt", "resnet18_hybrid_scripted.pt", "resnet18_hybrid_v2_scripted.pt"};
     private String[] exampleImages = {
             "test01.jpg", "test02.jpg", "test03.jpg", "test04.jpg", "test05.jpg",
             "test06.jpg", "test07.jpg", "test08.jpg", "test09.jpg", "test10.jpg",
